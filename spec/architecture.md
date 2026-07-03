@@ -121,7 +121,7 @@ This test must run in Phase 1's gate (`qa-graph-core` slice) and continue to pas
 - **Agent framework:** LangGraph (already scaffolded in `src/graph/`) — a ReAct-style tool-use loop with a bounded retry edge (see `spec/agent.md`).
 - **LLM provider + model:**
   - Provider: Google Gemini (`google-genai` SDK, already in `pyproject.toml`), auto-detected via `AGENT_GEMINI_API_KEY` per the existing `LLMClient`/provider-factory pattern.
-  - Code generation node: `gemini-3.1-pro` — higher-quality reasoning reduces the number of retries needed to produce correct pandas code, which matters more for total cost/latency than raw model speed here.
+  - Code generation node: `gemini-3.1-pro-preview` — higher-quality reasoning reduces the number of retries needed to produce correct pandas code, which matters more for total cost/latency than raw model speed here.
   - Result-interpretation node: `gemini-2.5-flash` — the input is a small aggregate JSON and the task is straightforward summarization; the cheaper/faster model is sufficient and keeps the per-query cost low.
   - Both model IDs are env-configurable (`AGENT_LLM_MODEL_CODEGEN`, `AGENT_LLM_MODEL_INTERPRET`) so they can be swapped without a code change, per `harness/patterns/tech-stack.md`'s model-naming rule.
 - **Backend:** FastAPI (already scaffolded), served by `uvicorn`, run via `uv run python agent.py --run` (this repo's existing launcher — applies Alembic migrations, builds the frontend if `pnpm` is available, then starts uvicorn on port 8001).

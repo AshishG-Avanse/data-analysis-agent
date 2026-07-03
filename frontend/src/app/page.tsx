@@ -1,76 +1,101 @@
 'use client'
 
 import { useState } from 'react'
+import type { ApiEnvelope, ChatTurn, QuestionResponseData, SessionData } from './components/types'
+import { UploadArea } from './components/UploadArea'
+import { SchemaSummary } from './components/SchemaSummary'
+import { ChatThread } from './components/ChatThread'
+import { QuestionInput } from './components/QuestionInput'
 
 export default function Home() {
-  const [input, setInput] = useState('')
-  const [result, setResult] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [session, setSession] = useState<SessionData | null>(null)
+  const [turns, setTurns] = useState<ChatTurn[]>([])
+  const [networkError, setNetworkError] = useState<string | null>(null)
+  const [questionInFlight, setQuestionInFlight] = useState(false)
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!input.trim()) return
-    setLoading(true)
-    setError(null)
-    setResult(null)
+  function handleReset() {
+    setSession(null)
+    setTurns([])
+  }
+
+  function handleNetworkError() {
+    setNetworkError("Can't reach the server — is it running?")
+  }
+
+  async function handleAskQuestion(question: string) {
+    if (!session) return
+    setNetworkError(null)
+    setQuestionInFlight(true)
+
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    setTurns(prev => [...prev, { id, question, state: 'loading' }])
+
     try {
-      const res = await fetch('/runs', {
+      const res = await fetch(`/api/sessions/${session.session_id}/questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input_text: input }),
+        body: JSON.stringify({ question }),
       })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.detail?.message ?? `Request failed (${res.status})`)
-      } else if (data.data?.error) {
-        setError(data.data.error)
-      } else {
-        setResult(data.data.output_text)
+      const body: ApiEnvelope<QuestionResponseData> = await res
+        .json()
+        .catch(() => ({ data: null, error: 'Malformed server response' }))
+
+      if (!res.ok || body.error || !body.data) {
+        setTurns(prev =>
+          prev.map(t =>
+            t.id === id
+              ? {
+                  ...t,
+                  state: 'error',
+                  errorMessage: body.error ?? 'Something went wrong answering that — try again.',
+                }
+              : t
+          )
+        )
+        return
       }
+
+      const data = body.data
+      setTurns(prev =>
+        prev.map(t =>
+          t.id === id
+            ? {
+                ...t,
+                state: data.status,
+                answer: data.answer,
+                code: data.code,
+              }
+            : t
+        )
+      )
     } catch {
-      setError('Network error — is the server running?')
+      // Network failure: surface the top-level banner and drop the pending turn.
+      setTurns(prev => prev.filter(t => t.id !== id))
+      handleNetworkError()
     } finally {
-      setLoading(false)
+      setQuestionInFlight(false)
     }
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-16">
-      <h1 className="mb-8 text-3xl font-bold tracking-tight">Agent</h1>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <textarea
-          className="w-full rounded-lg border border-gray-300 p-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          rows={4}
-          placeholder="Enter text to transform…"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          disabled={loading}
-        />
-        <button
-          type="submit"
-          disabled={loading || !input.trim()}
-          className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+    <main className="min-h-screen">
+      {networkError && (
+        <div
+          className="border-b border-red-200 bg-red-50 px-4 py-2 text-center text-sm text-red-700"
+          data-testid="network-error-banner"
         >
-          {loading ? 'Running…' : 'Run'}
-        </button>
-      </form>
-
-      {error && (
-        <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error}
+          {networkError}
         </div>
       )}
 
-      {result && (
-        <div className="mt-6 rounded-lg border border-gray-200 bg-white p-4 text-sm whitespace-pre-wrap shadow-sm">
-          {result}
+      {!session ? (
+        <UploadArea onUploaded={setSession} onNetworkError={handleNetworkError} />
+      ) : (
+        <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10">
+          <SchemaSummary session={session} onReset={handleReset} />
+          <ChatThread turns={turns} />
+          <QuestionInput disabled={questionInFlight} onSubmit={handleAskQuestion} />
         </div>
-      )}
-
-      {!result && !error && !loading && (
-        <p className="mt-10 text-center text-sm text-gray-400">Results will appear here.</p>
       )}
     </main>
   )

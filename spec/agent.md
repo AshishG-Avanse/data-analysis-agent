@@ -12,7 +12,7 @@
 
 | Agent / Node | Provider | Model ID | Rationale |
 |-------------|----------|----------|-----------|
-| `generate_code` | Gemini | `gemini-3.1-pro` (env: `AGENT_LLM_MODEL_CODEGEN`) | Code correctness matters most here — a stronger model produces correct pandas code more often, cutting the number of retries (and total cost/latency) versus a faster/weaker model that fails more often |
+| `generate_code` | Gemini | `gemini-3.1-pro-preview` (env: `AGENT_LLM_MODEL_CODEGEN`) | Code correctness matters most here — a stronger model produces correct pandas code more often, cutting the number of retries (and total cost/latency) versus a faster/weaker model that fails more often |
 | `synthesize_answer` | Gemini | `gemini-2.5-flash` (env: `AGENT_LLM_MODEL_INTERPRET`) | Input is a small aggregate JSON; the task is straightforward summarization — the cheap/fast model is sufficient and keeps per-query cost low |
 
 **Fallback behaviour:** If the Gemini API itself is unreachable, times out, or returns an auth/rate-limit error (as opposed to the model simply producing broken code — that's a normal retryable loop iteration), the node sets `state["error"]` and the graph routes to `handle_error` → a clear, surfaced error message ("The analysis service is temporarily unavailable — try again.") — never a silent fallback and never an invented answer. There is no offline stub in the gated path; both nodes call the real Gemini API in every environment the gate runs in.
@@ -78,7 +78,7 @@ class QAState(TypedDict, total=False):
 
 **Writes to state:** `generated_code`
 
-**LLM call:** yes — `gemini-3.1-pro`, prompt = `src/prompts/codegen.md` rendered with `schema_profile` JSON + `question` + (if `retry_count > 0`) the prior `generated_code` and `execution_error` + (Phase 2) `conversation_history`. Output format: a single fenced Python code block.
+**LLM call:** yes — `gemini-3.1-pro-preview`, prompt = `src/prompts/codegen.md` rendered with `schema_profile` JSON + `question` + (if `retry_count > 0`) the prior `generated_code` and `execution_error` + (Phase 2) `conversation_history`. Output format: a single fenced Python code block.
 
 **External calls:**
 

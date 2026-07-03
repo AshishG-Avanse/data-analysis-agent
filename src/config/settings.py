@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     anthropic_api_key: str = Field(default="")
     gemini_api_key: str = Field(default="")
 
+    # Per-node model overrides (blank = provider default, see spec/architecture.md)
+    llm_model_codegen: str = Field(default="")     # env: AGENT_LLM_MODEL_CODEGEN
+    llm_model_interpret: str = Field(default="")   # env: AGENT_LLM_MODEL_INTERPRET
+
+    # Iterative code-gen/execute/retry loop (spec/agent.md)
+    max_retries: int = Field(default=3)             # env: AGENT_MAX_RETRIES
+    exec_timeout_seconds: int = Field(default=15)   # env: AGENT_EXEC_TIMEOUT_SECONDS
+
 
 _settings: Settings | None = None
 
