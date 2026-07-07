@@ -19,6 +19,11 @@ ROOT = Path(__file__).resolve().parent
 if sys.platform == "win32":
     os.system("")
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 # ── colours ──────────────────────────────────────────────────────────────────
 GREEN  = "\033[32m"
 RED    = "\033[31m"
@@ -197,9 +202,10 @@ def do_run() -> None:
 
     # frontend build
     fe = ROOT / "frontend"
-    if which("pnpm") and fe.exists():
+    pnpm_path = shutil.which("pnpm")
+    if pnpm_path and fe.exists():
         info("building frontend...")
-        r = run(["pnpm", "build"], cwd=fe, capture=False)
+        r = run([pnpm_path, "build"], cwd=fe, capture=False)
         if r.returncode != 0:
             print(f"\n{RED}frontend build failed.{RESET}")
             sys.exit(1)

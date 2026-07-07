@@ -3,7 +3,11 @@ from google.genai import types
 
 
 class GeminiProvider:
-    DEFAULT_MODEL = "gemini-3.1-pro"
+    DEFAULT_MODEL = "gemini-3.1-pro-preview"
+    # Per-node defaults (spec/architecture.md -> "LLM Provider & Model"),
+    # used when the corresponding AGENT_LLM_MODEL_* setting is blank.
+    DEFAULT_MODEL_CODEGEN = "gemini-3.1-pro-preview"
+    DEFAULT_MODEL_INTERPRET = "gemini-2.5-flash"
 
     def __init__(self, api_key: str, model: str) -> None:
         self._client = genai.Client(api_key=api_key)
